@@ -15,13 +15,16 @@ import java.util.concurrent.ConcurrentMap;
 
 @WebServlet("/evening")
 public class EveningServlet extends HttpServlet {
-    private static final String CUSTOM_SESSION_MAP_KEY = "CUSTOM_NAME_SESSION_ID";
+    private static final String CUSTOM_SESSION = "CUSTOM_NAME_SESSION_ID";
+    private static final String NAME_PARAMETER = "name";
+    private static final String DEFAULT = "welcome to the club Buddy";
+    private static final String PRINT_MESSAGE_TEMPLATE = "Good evening: %s!%n";
     private static final ConcurrentMap<UUID, String> session = new ConcurrentHashMap<>();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
         Arrays.stream(Optional.ofNullable(req.getCookies()).orElse(new Cookie[0]))
-                .filter(cookie -> cookie.getName().equals(CUSTOM_SESSION_MAP_KEY))
+                .filter(cookie -> cookie.getName().equals(CUSTOM_SESSION))
                 .findFirst()
                 .ifPresentOrElse(cookie -> processRequestWithCookie(cookie, req, resp),
                         () -> processRequestWithoutCookie(req, resp));
@@ -31,13 +34,13 @@ public class EveningServlet extends HttpServlet {
     private void processRequestWithoutCookie(HttpServletRequest req, HttpServletResponse resp) {
         try (var writer = resp.getWriter()) {
             var generatedSessionId = generateUUID();
-            var name = req.getParameter("name");
+            var name = req.getParameter(NAME_PARAMETER);
             saveNameIntoSessionMap(name, generatedSessionId);
 
             var nameFromMap = Optional.ofNullable(session.get(generatedSessionId))
-                    .orElseGet(() -> "welcome to the club Buddy");
-            writer.printf("Good evening: %s!%n", nameFromMap);
-            resp.addCookie(new Cookie(CUSTOM_SESSION_MAP_KEY, generatedSessionId.toString()));
+                    .orElseGet(() -> DEFAULT);
+            writer.printf(PRINT_MESSAGE_TEMPLATE, nameFromMap);
+            resp.addCookie(new Cookie(CUSTOM_SESSION, generatedSessionId.toString()));
         }
     }
 
@@ -45,12 +48,12 @@ public class EveningServlet extends HttpServlet {
     private void processRequestWithCookie(Cookie cookie, HttpServletRequest req, HttpServletResponse resp) {
         try (var writer = resp.getWriter()) {
             var customSessionId = UUID.fromString(cookie.getValue());
-            var name = req.getParameter("name");
+            var name = req.getParameter(NAME_PARAMETER);
             saveNameIntoSessionMap(name, customSessionId);
 
             var nameFromMap = Optional.ofNullable(session.get(customSessionId))
-                    .orElseGet(() -> "welcome to the club Buddy");
-            writer.printf("Good evening: %s!%n", nameFromMap);
+                    .orElseGet(() -> DEFAULT);
+            writer.printf(PRINT_MESSAGE_TEMPLATE, nameFromMap);
         }
     }
 
